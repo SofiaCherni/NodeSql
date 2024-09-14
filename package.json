@@ -1,0 +1,20 @@
+{
+  "name": "homework_44",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongodb": "^6.9.0",
+    "nodemon": "^3.1.4",
+    "sqlite3": "^5.1.7"
+  }
+}
