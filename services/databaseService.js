@@ -1,50 +1,82 @@
-const sqlite3 = require('sqlite3').verbose();
+const {MongoClient, ObjectId} = require('mongodb');
 
-class DatabaseService {
-    constructor() {
-        this.db = new sqlite3.Database('mydatabase.db');
-        this.initializeDatabase();
-    }
+const MONGO_URL = 'mongodb+srv://mongodb-srv:73Sh8L2wuhfjrOpj@mongodb-srv.mswmp.mongodb.net/?retryWrites=true&w=majority&appName=Mongodb-srv';
+const DB_NAME = 'your_database';// Update with your database name
+const COLLECTION_NAME = 'your_database';// Update with your collection name
+const COLLECTION_NAME_ATACKERS = 'some_atackers';
 
-    initializeDatabase() {
-        this.db.run('CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
-    }
+const client = new MongoClient(MONGO_URL);
+let collection;
+let collection_atackers;
 
-    createItem(name, callback) {
-        this.db.run('INSERT INTO items (name) VALUES (?)', [name], function(err){
-            if (err) {
-                return callback(err);
-            }
-            callback(null, { id: this.lastID, name });
-        });
-    }
+async function connectToMongoDB() {
+    await client.connect();
+    const db = client.db(DB_NAME);
+    collection = db.collection(COLLECTION_NAME);
+    collection_atackers = db.collection(COLLECTION_NAME_ATACKERS);
+}
 
-    getItems(callback) {
-        this.db.all('SELECT * FROM items', (err, rows) => {
-            if (err) {
-                return callback(err);
-            }
-            callback(null, { items: rows });
-        });
-    }
-
-    updateItem(id, name, callback) {
-        this.db.run('UPDATE items SET name = ? WHERE id = ?', [name, id], function(err) {
-            if (err) {
-                return callback(err);
-            }
-            callback(null, { id: this.changes, name });
-        });
-    }
-
-    deleteItem(id, callback) {
-        this.db.run('DELETE FROM items WHERE id = ?', [id], function(err) {
-            if (err) {
-                return callback(err);
-            }
-            callback(null, { id: this.changes });
-        });
+async function disconnectFromMongoDB() {
+    if (client) {
+        await client.close();
     }
 }
 
-module.exports = new DatabaseService();
+async function createItem(name) {
+    try {
+        const result = await collection_atackers.insertOne({name});
+        if (result) {
+            const insertedId = result.insertedId;
+            const createdItem = await collection_atackers.findOne({ _id: insertedId});
+            return createdItem;
+        } else {
+            throw new Error('Failed to insert item');
+        }
+    } catch (error) {
+        console.error('Error in createdItem', error.message);
+        return { error: error.message};
+    }
+}
+
+async function getItems() {
+    const items = await collection.find({}).toArray();
+    return items;
+}
+
+async function updateItem(id, name) {
+    try {
+        const result = await collection.updateOne(
+            {_id: new ObjectId(id)},
+            { $set: {name}}
+        );
+        return result;
+    } catch (error) {
+        console.error('Error in updateItem:', error.message);
+        return {error: error.message};
+    }
+}
+
+async function deleteItem(id) {
+    try {
+        // Check if id is a valid ObjectId
+        if (!ObjectId.isValid(id)) {
+            throw new Error('Invalid ObjectId');
+        }
+
+        const result = await collection.deleteOne({ _id: new ObjectId(id)});
+        return result;
+    } catch (error) {
+        //Handle any errors
+        console.error('Error in deleteItem:', error.message);
+        return {error: error.message};
+    }
+}
+
+module.exports = {
+    connectToMongoDB,
+    disconnectFromMongoDB,
+    createItem,
+    getItems,
+    updateItem,
+    deleteItem
+};

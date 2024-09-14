@@ -1,59 +1,67 @@
 const express = require('express');
-const databaseService = require('./services/databaseService');
+const bodyParser = require('body-parser');
+const mongoService = require('./services/databaseService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(bodyParser.json());
 
-// CRUD Operations
+//connect to MongoDB
 
-// Create (INSERT)
-app.post('/items', (req, res) => {
-    const { name } = req.body;
-    databaseService.createItem(name, (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+mongoService.connectToMongoDB().then(() => {
+    console.log('Connect to MongoDB');
+
+    // CRUD Operations
+    
+    // Create (INSERT)
+    app.post('/items', async (req, res) => {
+        const { name } = req.body;
+        try {
+            const newItems = await mongoService.createItem(name);
+            res.json(newItems);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
-        res.json(result);
     });
-});
-
-// Read (SELECT)
-app.get('/items', (req, res) => {
-    databaseService.getItems((err, result) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+    
+    // Read (SELECT)
+    app.get('/items', async (req, res) => {
+        try {
+            const items = await mongoService.getItems();
+            res.json(items);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
-        res.json(result);
     });
-});
-
-// Update (UPDATE)
-app.put('/items/:id', (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-    databaseService.updateItem(id, name, (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+    
+    // Update (UPDATE)
+    app.put('/items/:id', async (req, res) => {
+        const { id } = req.params;
+        const { name } = req.body;
+        try {
+            const result = await mongoService.updateItem(id, name);
+            res.json(result);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
-        res.json(result);
     });
-});
-
-// Delete (DELETE)
-app.delete('/items/:id', (req, res) => {
-    const { id } = req.params;
-    databaseService.deleteItem(id, (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+    
+    // Delete (DELETE)
+    app.delete('/items/:id', async (req, res) => {
+        const { id } = req.params;
+        try{
+            const result = await mongoService.deleteItem(id);
+            res.json(result);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
-        res.json(result);
     });
+    
+    app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+    });
+}).catch(err => {
+    console.log('Failed to connect to MongoDB', err);
+    process.exit(1);//Exit the application on MongoDB connection failure
 });
-
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-module.exports = app;
